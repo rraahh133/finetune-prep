@@ -378,6 +378,24 @@ def delete_file(name: str):
     return {"deleted": filename, "totalChunks": col.count()}
 
 
+@app.delete("/api/knowledge/files")
+def delete_all_files():
+    """Delete every document in the vector store (empty the collection)."""
+    col = collection()
+    all_ids = col.get(include=[]).get("ids", [])
+    if all_ids:
+        col.delete(ids=all_ids)
+    # Clean up any uploaded files saved to disk
+    if UPLOAD_DIR.exists():
+        for f in UPLOAD_DIR.iterdir():
+            try:
+                if f.is_file():
+                    f.unlink()
+            except OSError:
+                pass
+    return {"deleted": "all", "totalChunks": col.count()}
+
+
 def embed_and_store(filename: str, chunks: list) -> int:
     """Replace a document atomically by deterministic filename/chunk ids."""
     col = collection()

@@ -18,11 +18,13 @@ import { DokumenSayaView } from './components/DokumenSayaView';
 import { TanyaJawabView } from './components/TanyaJawabView';
 import { PengaturanView } from './components/PengaturanView';
 import { TemplateTersimpanView } from './components/TemplateTersimpanView';
+import { DokumentasiView } from './components/DokumentasiView';
 import { DocumentModal } from './components/DocumentModal';
 import { SourceModal } from './components/SourceModal';
+import logoIcon from '../assets/cleaning.png';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'dokumen' | 'tanya' | 'pengaturan' | 'template'>('dokumen');
+  const [activeTab, setActiveTab] = useState<'dokumen' | 'tanya' | 'pengaturan' | 'template' | 'dokumentasi'>('dokumentasi');
   const [documents, setDocuments] = useState<DocumentItem[]>(() => {
     const saved = localStorage.getItem('asisten_pintar_docs');
     if (!saved) return INITIAL_DOCUMENTS;
@@ -175,6 +177,11 @@ export default function App() {
     } catch (err) {
       console.error(err);
     }
+  };
+
+  // Handle Delete Selected Documents
+  const handleDeleteSelected = async (ids: string[]) => {
+    await Promise.all(ids.map((id) => handleDeleteDocument(id)));
   };
 
   // Handle Scan Folder
@@ -379,7 +386,7 @@ export default function App() {
   const currentChatSession = chatSessions.find((c) => c.id === currentChatId) || null;
 
   return (
-    <div className="min-h-screen bg-[#f8f9fa] dark:bg-[#121216] text-[#191c1d] dark:text-gray-100 flex font-body antialiased transition-colors duration-300">
+    <div className="min-h-screen bg-gradient-to-br from-[#f5f2fa] via-[#ece6f6] to-[#e3d9f2] dark:from-[#171422] dark:via-[#211c33] dark:to-[#2c2444] text-[#191c1d] dark:text-gray-100 flex font-body antialiased transition-colors duration-300">
       {/* Mobile Top Header */}
       <div className="md:hidden fixed top-0 left-0 right-0 h-14 bg-[#f3f4f5] dark:bg-[#1e1e24] border-b border-[#cdc3d0] dark:border-gray-800 flex items-center justify-between px-4 z-20">
         <button
@@ -389,14 +396,12 @@ export default function App() {
           <span className="material-symbols-outlined">menu</span>
         </button>
         <div className="flex items-center gap-2">
-          <span className="material-symbols-outlined text-[#6f5092] text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>
-            auto_awesome
-          </span>
+          <img src={logoIcon} alt="Asisten Pintar" className="w-7 h-7 object-contain" />
           <span className="font-headline font-bold text-[16px]">Asisten Pintar</span>
         </div>
         <button
           onClick={handleNewChat}
-          className="p-1.5 text-[#6f5092] hover:bg-purple-100 dark:hover:bg-purple-950/40 rounded-lg"
+          className="p-1.5 text-[#6f5092] hover:bg-[#e9d5ff] dark:hover:bg-[#4f4062]/60 rounded-lg"
         >
           <span className="material-symbols-outlined">add</span>
         </button>
@@ -426,6 +431,7 @@ export default function App() {
             documents={documents}
             onAddDocument={handleAddDocument}
             onDeleteDocument={handleDeleteDocument}
+            onDeleteSelected={handleDeleteSelected}
             onScanFolder={handleScanFolder}
             onSelectDocForInspection={(doc) => setInspectDoc(doc)}
             onQuickChat={(msg) => {
@@ -462,6 +468,10 @@ export default function App() {
             onDeleteTemplate={handleDeleteTemplate}
             darkMode={darkMode}
           />
+        )}
+
+        {activeTab === 'dokumentasi' && (
+          <DokumentasiView darkMode={darkMode} />
         )}
       </div>
 

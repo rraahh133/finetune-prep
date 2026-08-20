@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChatSession } from '../types';
+import logoIcon from '../../assets/cleaning.png';
 
 interface SidebarProps {
-  activeTab: 'dokumen' | 'tanya' | 'pengaturan' | 'template';
-  setActiveTab: (tab: 'dokumen' | 'tanya' | 'pengaturan' | 'template') => void;
+  activeTab: 'dokumen' | 'tanya' | 'pengaturan' | 'template' | 'dokumentasi';
+  setActiveTab: (tab: 'dokumen' | 'tanya' | 'pengaturan' | 'template' | 'dokumentasi') => void;
   chatSessions: ChatSession[];
   currentChatId: string;
   onSelectChat: (id: string) => void;
@@ -79,19 +80,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <nav
         className={`fixed left-0 top-0 h-full w-[280px] flex flex-col p-4 z-40 transition-transform duration-300 border-r shadow-sm ${
           darkMode
-            ? 'bg-[#1e1e24] border-gray-800 text-gray-100'
-            : 'bg-[#f3f4f5] border-[#cdc3d0] text-[#191c1d]'
+            ? 'border-gray-800 text-gray-100'
+            : 'border-[#cdc3d0] text-[#191c1d]'
         } ${isOpenMobile ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
       >
         {/* Brand Header */}
         <div className="flex items-center gap-3 mb-6 px-2">
-          <div className="w-10 h-10 rounded-xl bg-[#d8b4fe] flex items-center justify-center text-[#604283] shadow-sm shrink-0">
-            <span
-              className="material-symbols-outlined text-[24px]"
-              style={{ fontVariationSettings: "'FILL' 1" }}
-            >
-              auto_awesome
-            </span>
+          <div className="flex items-center justify-center shrink-0">
+            <img src={logoIcon} alt="Asisten Pintar" className="w-8 h-8 object-contain" />
           </div>
           <div>
             <h1 className="font-headline text-[20px] font-bold leading-tight">
@@ -119,8 +115,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
 
           <p className="font-body text-[11px] font-semibold text-[#4a454f] dark:text-gray-400 uppercase tracking-wider mb-2 px-3 mt-4">
-            Menu Utama
+            Menu
           </p>
+
+          <button
+            onClick={() => {
+              setActiveTab('dokumentasi');
+              setIsOpenMobile(false);
+            }}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-body text-[14px] transition-colors cursor-pointer text-left ${
+              activeTab === 'dokumentasi'
+                ? 'bg-[#e9d5ff] dark:bg-[#4f4062] text-[#6a5a7e] dark:text-[#eddcff] font-bold'
+                : 'text-[#4a454f] dark:text-gray-300 hover:bg-[#e7e8e9] dark:hover:bg-[#2e3132]'
+            }`}
+          >
+            <span
+              className="material-symbols-outlined text-[20px]"
+              style={{ fontVariationSettings: activeTab === 'dokumentasi' ? "'FILL' 1" : "'FILL' 0" }}
+            >
+              menu_book
+            </span>
+            <span>Dokumentasi</span>
+          </button>
 
           <button
             onClick={() => {
@@ -264,7 +280,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           >
                             <button
                               onClick={() => handleStartRename(chat)}
-                              className="w-full text-left px-3 py-1.5 hover:bg-purple-50 dark:hover:bg-purple-950/40 text-gray-700 dark:text-gray-200 flex items-center gap-2 transition-colors cursor-pointer"
+                              className="w-full text-left px-3 py-1.5 hover:bg-[#e7e8e9] dark:hover:bg-[#2e3132] text-gray-700 dark:text-gray-200 flex items-center gap-2 transition-colors cursor-pointer"
                             >
                               <span className="material-symbols-outlined text-[15px]">edit</span>
                               <span>Ganti nama</span>
@@ -275,7 +291,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                 if (onPinChat) onPinChat(chat.id);
                                 setOpenMenuId(null);
                               }}
-                              className="w-full text-left px-3 py-1.5 hover:bg-purple-50 dark:hover:bg-purple-950/40 text-gray-700 dark:text-gray-200 flex items-center gap-2 transition-colors cursor-pointer"
+                              className="w-full text-left px-3 py-1.5 hover:bg-[#e7e8e9] dark:hover:bg-[#2e3132] text-gray-700 dark:text-gray-200 flex items-center gap-2 transition-colors cursor-pointer"
                             >
                               <span className="material-symbols-outlined text-[15px]">push_pin</span>
                               <span>{chat.pinned ? 'Lepas Sematan' : 'Sematkan'}</span>

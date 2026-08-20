@@ -8,8 +8,17 @@
     --font-body: 'Inter', sans-serif;
   }
 
+  html, html body {
+    background: linear-gradient(160deg, #f5f2fa 0%, #ece6f6 45%, #e3d9f2 100%) !important;
+    background-attachment: fixed;
+    min-height: 100vh;
+    color: #191c1d !important;
+  }
+
   html.dark, html.dark body {
-    background-color: #121216 !important;
+    background: linear-gradient(160deg, #171422 0%, #211c33 45%, #2c2444 100%) !important;
+    background-attachment: fixed;
+    min-height: 100vh;
     color: #e2e8f0 !important;
   }
 }

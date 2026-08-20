@@ -6,6 +6,7 @@ interface DokumenSayaViewProps {
   documents: DocumentItem[];
   onAddDocument: (doc: DocumentItem) => void;
   onDeleteDocument: (id: string) => void;
+  onDeleteSelected?: (ids: string[]) => void;
   onScanFolder: (folderPath: string) => void;
   onSelectDocForInspection: (doc: DocumentItem) => void;
   onQuickChat?: (msg: string) => void;
@@ -16,16 +17,43 @@ export const DokumenSayaView: React.FC<DokumenSayaViewProps> = ({
   documents,
   onAddDocument,
   onDeleteDocument,
+  onDeleteSelected,
   onScanFolder,
   onSelectDocForInspection,
   onQuickChat,
   darkMode,
 }) => {
   const [folderPathInput, setFolderPathInput] = useState('');
-  const [quickChatInput, setQuickChatInput] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [isChoosingFolder, setIsChoosingFolder] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const allFilesRef = React.useRef<HTMLDivElement>(null);
+
+  const handleSelectAll = () => {
+    setSelectedIds((prev) => {
+      const allSelected = documents.length > 0 && prev.size === documents.length;
+      return allSelected ? new Set() : new Set(documents.map((d) => d.id));
+    });
+  };
+
+  const handleToggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleDeleteSelectedClick = async () => {
+    if (selectedIds.size === 0) return;
+    if (confirm(`Hapus ${selectedIds.size} dokumen terpilih?`)) {
+      if (onDeleteSelected) await onDeleteSelected([...selectedIds]);
+      else await Promise.all([...selectedIds].map((id) => onDeleteDocument(id)));
+      setSelectedIds(new Set());
+    }
+  };
 
   React.useEffect(() => {
     fetch('/api/knowledge/watched-folder')
@@ -135,49 +163,7 @@ export const DokumenSayaView: React.FC<DokumenSayaViewProps> = ({
   };
 
   return (
-    <div className="flex-1 p-4 md:p-8 max-w-[1280px] mx-auto w-full pt-6 pb-20 bg-gray-50/50 dark:bg-[#121212]">
-
-      {/* Quick Chat Section */}
-      <div className="mb-10 relative group">
-        <div className="absolute -inset-0.5 bg-gradient-to-r from-[#22d3ee] to-[#a855f7] rounded-[24px] opacity-70 group-hover:opacity-100 blur-[1px] transition duration-500"></div>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (quickChatInput.trim() && onQuickChat) {
-              onQuickChat(quickChatInput);
-              setQuickChatInput('');
-            }
-          }}
-          className="relative bg-white dark:bg-[#1e1e24] rounded-[22px] p-2 flex flex-col justify-between shadow-sm min-h-[110px]"
-        >
-          <textarea
-            value={quickChatInput}
-            onChange={(e) => setQuickChatInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                if (quickChatInput.trim() && onQuickChat) {
-                  onQuickChat(quickChatInput);
-                  setQuickChatInput('');
-                }
-              }
-            }}
-            placeholder="Chat Cepat Bot Sekarang"
-            className="w-full bg-transparent resize-none outline-none font-body text-[15px] text-gray-900 dark:text-gray-100 px-4 pt-3 placeholder-gray-400"
-            rows={2}
-          />
-          <div className="flex justify-end px-2 pb-1">
-            <button
-              type="submit"
-              disabled={!quickChatInput.trim()}
-              className="w-10 h-10 rounded-full flex items-center justify-center bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 disabled:opacity-50 transition-colors cursor-pointer"
-              title="Kirim"
-            >
-              <span className="material-symbols-outlined text-[24px]">send</span>
-            </button>
-          </div>
-        </form>
-      </div>
+    <div className="flex-1 p-4 md:p-8 max-w-[1280px] mx-auto w-full pt-6 pb-20">
 
       {/* Page Header */}
       <div className="mb-8">
@@ -191,7 +177,7 @@ export const DokumenSayaView: React.FC<DokumenSayaViewProps> = ({
         <div className="bg-white dark:bg-[#1e1e24] border border-[#cdc3d0] dark:border-gray-800 rounded-xl p-5 md:p-6 shadow-sm relative overflow-hidden">
           <div>
             <div className="flex items-start gap-4 mb-4 relative z-10">
-              <div className="w-12 h-12 rounded-xl bg-[#d8b4fe] text-[#604283] flex items-center justify-center shrink-0">
+              <div className="w-12 h-12 rounded-xl bg-[#6f5092] text-white flex items-center justify-center shrink-0">
                 <span
                   className="material-symbols-outlined text-[26px]"
                   style={{ fontVariationSettings: "'FILL' 1" }}
@@ -201,7 +187,7 @@ export const DokumenSayaView: React.FC<DokumenSayaViewProps> = ({
               </div>
               <div>
                 <h3 className="font-headline text-[20px] font-bold text-[#191c1d] dark:text-gray-100">
-                  Scan Folder Otomatis
+                  Impor Dokumen dari Folder
                 </h3>
               </div>
             </div>
@@ -214,7 +200,7 @@ export const DokumenSayaView: React.FC<DokumenSayaViewProps> = ({
                 >
                   folder
                 </span>
-                Path Folder
+                Lokasi Folder
               </label>
 
               <div className="flex gap-2 sm:gap-3 w-full">
@@ -223,7 +209,7 @@ export const DokumenSayaView: React.FC<DokumenSayaViewProps> = ({
                   value={folderPathInput}
                   onChange={(e) => setFolderPathInput(e.target.value)}
                   className="flex-1 bg-[#f3f4f5] dark:bg-[#2e3132] border border-[#cdc3d0] dark:border-gray-700 rounded-lg px-3.5 py-2 font-body text-[14px] text-[#191c1d] dark:text-gray-100 focus:outline-none focus:border-[#6f5092]"
-                  placeholder="Pilih atau masukkan path folder..."
+                  placeholder="Pilih atau ketik lokasi folder..."
                 />
                 <button
                   type="button"
@@ -235,18 +221,18 @@ export const DokumenSayaView: React.FC<DokumenSayaViewProps> = ({
                   <span className="material-symbols-outlined text-[20px]">
                     {isChoosingFolder ? 'hourglass_top' : 'folder_open'}
                   </span>
-                  <span className="hidden sm:inline">Pilih Folder</span>
+                  <span className="hidden sm:inline">Cari Folder</span>
                 </button>
                 <button
                   onClick={handleScanClick}
                   disabled={isScanning || !folderPathInput.trim()}
                   className="bg-[#FFD54F] hover:opacity-90 text-[#29074a] px-5 py-2 rounded-lg font-body text-[14px] font-semibold transition-colors flex items-center justify-center gap-2 whitespace-nowrap shadow-sm cursor-pointer disabled:opacity-50"
-                  title="Scan dan Ingest Folder"
+                  title="Impor semua dokumen dari folder ini"
                 >
                   <span className="material-symbols-outlined text-[20px]">
                     {isScanning ? 'sync' : 'search'}
                   </span>
-                  <span className="hidden sm:inline">Scan</span>
+                  <span className="hidden sm:inline">Impor</span>
                 </button>
               </div>
             </div>
@@ -260,10 +246,10 @@ export const DokumenSayaView: React.FC<DokumenSayaViewProps> = ({
             folder_off
           </span>
           <h3 className="font-headline text-[20px] font-bold text-gray-900 dark:text-gray-100 mb-2">
-            Belum ada file di Dokumen Saya
+            Belum ada dokumen
           </h3>
           <p className="font-body text-[14px] text-gray-500 dark:text-gray-400 max-w-md mx-auto">
-            Mulai dengan melakukan pemindaian folder di komputer Anda melalui kolom pencarian di atas untuk mengimpor dokumen.
+            Mulai dengan mengimpor folder di komputer Anda melalui tombol di atas.
           </p>
         </div>
       ) : (
@@ -272,10 +258,13 @@ export const DokumenSayaView: React.FC<DokumenSayaViewProps> = ({
           <div className="mb-10">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-headline text-[20px] font-bold text-gray-900 dark:text-gray-100">
-                Recent Files
+                Dokumen Terbaru
               </h3>
-              <button className="text-blue-600 dark:text-blue-400 font-body text-[14px] font-semibold hover:underline flex items-center gap-1">
-                See All <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+              <button
+                onClick={() => allFilesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                className="text-blue-600 dark:text-blue-400 font-body text-[14px] font-semibold hover:underline flex items-center gap-1 cursor-pointer"
+              >
+                Lihat Semua <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
               </button>
             </div>
 
@@ -309,12 +298,21 @@ export const DokumenSayaView: React.FC<DokumenSayaViewProps> = ({
           </div>
 
             {/* All Files Section */}
-            <div>
-              <div className="flex items-center justify-between mb-4">
+            <div ref={allFilesRef}>
+              <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
                 <h3 className="font-headline text-[20px] font-bold text-gray-900 dark:text-gray-100">
-                  All Files
+                  Semua Dokumen
                 </h3>
                 <div className="flex items-center gap-3">
+                  {selectedIds.size > 0 && (
+                    <button
+                      onClick={handleDeleteSelectedClick}
+                      className="flex items-center gap-2 border border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-950/40 px-3 py-1.5 rounded-lg text-[13px] font-body text-red-600 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">delete</span>
+                      Hapus Terpilih ({selectedIds.size})
+                    </button>
+                  )}
                   <button className="flex items-center gap-2 border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1e1e24] px-3 py-1.5 rounded-lg text-[13px] font-body text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                     <span className="material-symbols-outlined text-[16px]">description</span>
                     Type
@@ -326,16 +324,22 @@ export const DokumenSayaView: React.FC<DokumenSayaViewProps> = ({
               <div className="bg-white dark:bg-[#1e1e24] border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm overflow-hidden">
                 <div className="flex items-center gap-4 px-4 py-3 bg-gray-50/50 dark:bg-[#1a1a20] border-b border-gray-100 dark:border-gray-800">
                   <div className="w-6 flex justify-center">
-                    <div className="w-4 h-4 rounded border border-gray-300 dark:border-gray-600"></div>
+                    <input
+                      type="checkbox"
+                      checked={documents.length > 0 && selectedIds.size === documents.length}
+                      onChange={handleSelectAll}
+                      className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 accent-[#6f5092] cursor-pointer"
+                      title="Pilih semua dokumen"
+                    />
                   </div>
                   <div className="flex-1 font-body text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-1 cursor-pointer">
-                    NAME <span className="material-symbols-outlined text-[14px]">arrow_downward</span>
+                    NAMA <span className="material-symbols-outlined text-[14px]">arrow_downward</span>
                   </div>
                   <div className="w-[100px] hidden sm:block font-body text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    SIZE
+                    UKURAN
                   </div>
                   <div className="w-[120px] hidden lg:block font-body text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    DATE
+                    TANGGAL
                   </div>
                   <div className="w-8"></div>
                 </div>
@@ -346,7 +350,12 @@ export const DokumenSayaView: React.FC<DokumenSayaViewProps> = ({
                     return (
                       <div key={doc.id} className="flex items-center gap-4 px-4 py-3 hover:bg-blue-50/30 dark:hover:bg-gray-800/40 transition-colors group">
                         <div className="w-6 flex justify-center">
-                          <div className="w-4 h-4 rounded border border-gray-300 dark:border-gray-600 opacity-50 group-hover:opacity-100 transition-opacity"></div>
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(doc.id)}
+                            onChange={() => handleToggleSelect(doc.id)}
+                            className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 accent-[#6f5092] cursor-pointer"
+                          />
                         </div>
 
                         <div className="flex-1 min-w-0 flex items-center gap-3">

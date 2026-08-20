@@ -1,6 +1,55 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ChatSession, DocumentItem, Citation, PromptTemplate } from '../types';
 import { SaveTemplateModal } from './SaveTemplateModal';
+import { MarkdownMessage } from './MarkdownMessage';
+import logoIcon from '../../assets/cleaning.png';
+
+/** Kotak kutipan dokumen — collapsible, default tertutup, isi full (tidak diringkas). */
+const CitationBlock: React.FC<{
+  citations: Citation[];
+  onInspectCitation: (citation: Citation) => void;
+}> = ({ citations, onInspectCitation }) => {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mt-3 rounded-lg border border-[#cdc3d0]/60 dark:border-gray-700 bg-[#f5f2fa]/60 dark:bg-[#1e1e24]/60 overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left cursor-pointer hover:bg-[#ece6f6]/60 dark:hover:bg-[#211c33]/60 transition-colors"
+      >
+        <span className="flex items-center gap-2 font-body text-[13px] font-semibold text-[#6f5092] dark:text-[#d8b4fe]">
+          <span className="material-symbols-outlined text-[15px]">source</span>
+          Kutipan Dokumen ({citations.length})
+        </span>
+        <span
+          className={`material-symbols-outlined text-[16px] text-[#6a5a7e] dark:text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`}
+        >
+          expand_more
+        </span>
+      </button>
+      {open && (
+        <div className="px-3 pb-3 border-t border-[#cdc3d0]/40 dark:border-gray-800 pt-2">
+          <div className="flex flex-wrap gap-2">
+            {citations.map((cite, idx) => (
+              <button
+                key={idx}
+                onClick={() => onInspectCitation(cite)}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#e9d5ff]/60 dark:bg-[#4f4062]/60 hover:bg-[#d8b4fe] text-[#604283] dark:text-[#eddcff] font-body text-[11px] font-medium transition-colors cursor-pointer border border-[#cdc3d0]/40"
+                title="Klik untuk lihat sumber dokumen"
+              >
+                <span className="material-symbols-outlined text-[12px]">description</span>
+                <span className="truncate max-w-[160px]">
+                  {cite.docName} (Bagian {cite.chunkIndex})
+                </span>
+                <span className="text-[10px] opacity-75">{(cite.score * 100).toFixed(0)}%</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 interface TanyaJawabViewProps {
   currentChat: ChatSession | null;
@@ -65,7 +114,7 @@ export const TanyaJawabView: React.FC<TanyaJawabViewProps> = ({
   const messages = currentChat?.messages || [];
 
   return (
-    <div className="flex-1 flex flex-col h-full relative overflow-hidden bg-[#f8f9fa] dark:bg-[#121216]">
+    <div className="flex-1 flex flex-col h-full relative overflow-hidden bg-gradient-to-br from-[#f5f2fa] via-[#ece6f6] to-[#e3d9f2] dark:from-[#171422] dark:via-[#211c33] dark:to-[#2c2444]">
       {/* Scrollable Chat Area */}
       <main className="flex-1 overflow-y-auto px-4 md:px-8 py-6 flex flex-col items-center pb-36 pt-6">
         <div className="w-full max-w-[800px] flex-1 flex flex-col">
@@ -102,53 +151,27 @@ export const TanyaJawabView: React.FC<TanyaJawabViewProps> = ({
                     {/* Role Header */}
                     {msg.role === 'assistant' && (
                       <div className="flex items-center gap-2 mb-2 pb-2 border-b border-[#cdc3d0]/40 dark:border-gray-800">
-                        <span
-                          className="material-symbols-outlined text-[18px] text-[#6f5092] dark:text-[#d8b4fe]"
-                          style={{ fontVariationSettings: "'FILL' 1" }}
-                        >
-                          auto_awesome
-                        </span>
+                        <img
+                          className="w-5 h-5 object-contain"
+                          src={logoIcon}
+                          alt="Asisten Pintar"
+                        />
                         <span className="font-headline font-semibold text-[13px] text-[#6f5092] dark:text-[#d8b4fe]">
-                          Asisten Pintar (RAG AI)
+                          Asisten Pintar
                         </span>
                       </div>
                     )}
 
                     {/* Message Content formatted */}
-                    <div className="whitespace-pre-wrap font-body">
-                      {msg.content}
-                    </div>
+                    {msg.role === 'assistant' ? (
+                      <MarkdownMessage content={msg.content} />
+                    ) : (
+                      <div className="whitespace-pre-wrap font-body">{msg.content}</div>
+                    )}
 
-                    {/* Citations / Sources list */}
+                    {/* Citations / Sources list — collapsible, default tertutup */}
                     {msg.citations && msg.citations.length > 0 && (
-                      <div className="mt-3 pt-3 border-t border-[#cdc3d0]/50 dark:border-gray-800">
-                        <p className="font-body text-[11px] font-semibold text-[#4a454f] dark:text-gray-400 mb-2 flex items-center gap-1">
-                          <span className="material-symbols-outlined text-[14px]">
-                            source
-                          </span>
-                          Sumber Dokumen Dikutip ({msg.citations.length}):
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          {msg.citations.map((cite, idx) => (
-                            <button
-                              key={idx}
-                              onClick={() => onInspectCitation(cite)}
-                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#e9d5ff]/60 dark:bg-[#4f4062]/60 hover:bg-[#d8b4fe] text-[#604283] dark:text-[#eddcff] font-body text-[11px] font-medium transition-colors cursor-pointer border border-[#cdc3d0]/40"
-                              title="Klik untuk melihat kutipan dokumen asli"
-                            >
-                              <span className="material-symbols-outlined text-[12px]">
-                                description
-                              </span>
-                              <span className="truncate max-w-[160px]">
-                                {cite.docName} (Bagian {cite.chunkIndex})
-                              </span>
-                              <span className="text-[10px] opacity-75">
-                                {(cite.score * 100).toFixed(0)}%
-                              </span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
+                      <CitationBlock citations={msg.citations} onInspectCitation={onInspectCitation} />
                     )}
                   </div>
                   <div className="flex items-center gap-2 mt-1 px-1">
@@ -163,7 +186,7 @@ export const TanyaJawabView: React.FC<TanyaJawabViewProps> = ({
                           setSaveModalOpen(true);
                         }}
                         className="p-1 rounded-full text-gray-400 hover:text-[#6f5092] dark:hover:text-[#d8b4fe] hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors cursor-pointer"
-                        title="Simpan sebagai Template"
+                        title="Simpan sebagai template"
                       >
                         <span className="material-symbols-outlined text-[16px]">bookmark_add</span>
                       </button>
@@ -182,7 +205,7 @@ export const TanyaJawabView: React.FC<TanyaJawabViewProps> = ({
                       sync
                     </span>
                     <span className="font-body text-[13px] text-[#4a454f] dark:text-gray-300 animate-pulse">
-                      Membaca dokumen & menyusun jawaban RAG...
+                      Sedang membaca dokumen & menyusun jawaban...
                     </span>
                   </div>
                 </div>
@@ -202,7 +225,7 @@ export const TanyaJawabView: React.FC<TanyaJawabViewProps> = ({
             <div className="mb-2 flex items-center gap-2 bg-[#e9d5ff] dark:bg-[#4f4062] px-3 py-1 rounded-full text-[12px] text-[#604283] dark:text-[#eddcff] w-fit">
               <span className="material-symbols-outlined text-[14px]">filter_alt</span>
               <span>
-                Fokus Dokumen:{' '}
+                Fokus:{' '}
                 {documents.find((d) => d.id === selectedDocId)?.name}
               </span>
               <button
@@ -228,12 +251,12 @@ export const TanyaJawabView: React.FC<TanyaJawabViewProps> = ({
               {/* Popup Dropdown to pick doc context */}
               <div className="absolute bottom-12 left-0 hidden group-hover:flex group-focus-within:flex flex-col bg-white dark:bg-[#1e1e24] border border-[#cdc3d0] dark:border-gray-800 rounded-xl shadow-lg p-2 min-w-[220px] z-50">
                 <p className="text-[11px] font-bold text-gray-500 px-2 py-1 uppercase">
-                  Pilih Dokumen RAG:
+                  Fokus pada dokumen:
                 </p>
                 <button
                   type="button"
                   onClick={() => setSelectedDocId('')}
-                  className={`text-left text-[12px] px-2 py-1.5 rounded hover:bg-purple-50 dark:hover:bg-purple-950/40 ${
+                  className={`text-left text-[12px] px-2 py-1.5 rounded hover:bg-[#e7e8e9] dark:hover:bg-[#2e3132] ${
                     selectedDocId === '' ? 'font-bold text-[#6f5092]' : ''
                   }`}
                 >
@@ -244,7 +267,7 @@ export const TanyaJawabView: React.FC<TanyaJawabViewProps> = ({
                     key={d.id}
                     type="button"
                     onClick={() => setSelectedDocId(d.id)}
-                    className={`text-left text-[12px] px-2 py-1.5 rounded hover:bg-purple-50 dark:hover:bg-purple-950/40 truncate ${
+                    className={`text-left text-[12px] px-2 py-1.5 rounded hover:bg-[#e7e8e9] dark:hover:bg-[#2e3132] truncate ${
                       selectedDocId === d.id ? 'font-bold text-[#6f5092]' : ''
                     }`}
                   >
@@ -259,7 +282,7 @@ export const TanyaJawabView: React.FC<TanyaJawabViewProps> = ({
               onChange={(e) => setInputText(e.target.value)}
               onKeyDown={handleKeyDown}
               className="flex-1 bg-transparent border-none focus:outline-none resize-none max-h-32 py-2.5 font-body text-[15px] text-[#191c1d] dark:text-gray-100 placeholder-[#4a454f] dark:placeholder-gray-500"
-              placeholder="Ketik pesan Anda di sini..."
+              placeholder="Ketik pertanyaan Anda di sini..."
               rows={1}
               style={{ minHeight: '44px' }}
             />
@@ -276,7 +299,7 @@ export const TanyaJawabView: React.FC<TanyaJawabViewProps> = ({
 
           <div className="text-center mt-2.5">
             <p className="font-body text-[11px] text-[#4a454f] dark:text-gray-400">
-              Asisten Pintar dapat membuat kesalahan. Harap periksa kembali informasi penting.
+              Asisten bisa membuat kesalahan. Harap cek kembali informasi penting.
             </p>
           </div>
         </div>
