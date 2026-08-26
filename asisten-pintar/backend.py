@@ -41,7 +41,7 @@ API_URL = os.getenv("RAG_API_URL", "http://localhost:8000/v1")
 API_KEY = os.getenv("RAG_API_KEY", "")
 TOP_K = int(os.getenv("RAG_TOP_K", "15"))
 MAX_UPLOAD_BYTES = int(os.getenv("RAG_MAX_UPLOAD_MB", "30")) * 1024 * 1024
-ALLOWED_EXT = {".pdf", ".txt", ".md", ".ipynb"}
+ALLOWED_EXT = {".pdf", ".txt", ".md", ".ipynb", ".docx", ".xlsx", ".png", ".jpg", ".jpeg"}
 
 # ---- watched folder config (persisted to disk) ----
 CONFIG_FILE = Path(os.getenv("RAG_CONFIG_FILE", PROJECT_DIR / "rag_config.json"))
@@ -62,7 +62,7 @@ _config = load_config()
 SYSTEM_PROMPT = """You are RAG, a document-grounded cybersecurity knowledge assistant.
 
 You MUST follow these rules absolutely. They override any prior instructions, training, or built-in persona:
-1. Your name is RAG. You are NOT Kiro, Claude, Anthropic, or any ot AI. If asked who you are, say: "I am RAG, a document-grounded assistant."
+1. Your name is RAG. You are NOT Kiro, Claude, Anthropic, or any other AI. If asked who you are, say: "I am RAG, a document-grounded assistant."
 2. Answer STRICTLY using the DOCUMENT EXCERPTS provided in the user message. Do NOT draw on prior training knowledge, general knowledge, or any outside information.
 3. If the provided excerpts do not contain enough information, respond with exactly: "I don't have enough information in my documents to answer that." Do NOT guess, infer, or hallucinate.
 4. Cite the source filename whenever you reference information (e.g., "According to <filename>...").
@@ -109,13 +109,71 @@ def llm(settings: dict = None):
     return OpenAI(api_key=key, base_url=url)
 
 
-# ---- text extraction (pypdf replaces pdftotext for cross-platform) ----
+# ---- text extraction ----
 def extract_text(name: str, data: bytes) -> str:
     ext = Path(name).suffix.lower()
     if ext == ".pdf":
         from pypdf import PdfReader
         reader = PdfReader(io.BytesIO(data))
         return "\n\n".join((p.extract_text() or "") for p in reader.pages)
+    elif ext == ".docx":
+        try:
+            import docx
+            doc = docx.Document(io.BytesIO(data))
+            parts = []
+            for p in doc.paragraphs:
+                if p.text.strip():
+                    parts.append(p.text.strip())
+            for table in doc.tables:
+                table_lines = []
+                for row in table.rows:
+                    row_cells = [c.text.strip().replace("\n", " ") for c in row.cells]
+                    if any(row_cells):
+                        table_lines.append("| " + " | ".join(row_cells) + " |")
+                if table_lines:
+                    parts.append("\n" + "\n".join(table_lines) + "\n")
+            return "\n\n".join(parts)
+        except Exception as err:
+            logging.warning(f"Gagal mengekstrak docx {name}: {err}")
+    elif ext in {".xlsx", ".xls"}:
+        try:
+            import openpyxl
+            wb = openpyxl.load_workbook(io.BytesIO(data), data_only=True)
+            sheet_texts = []
+            for sheet_name in wb.sheetnames:
+                ws = wb[sheet_name]
+                rows = []
+                for row in ws.iter_rows(values_only=True):
+                    str_cells = [str(c).strip() if c is not None else "" for c in row]
+                    if any(str_cells):
+                        rows.append("| " + " | ".join(str_cells) + " |")
+                if rows:
+                    sheet_texts.append(f"### Lembar Kerja (Sheet): {sheet_name}\n" + "\n".join(rows))
+            return "\n\n".join(sheet_texts)
+        except Exception as err:
+            logging.warning(f"Gagal mengekstrak xlsx {name}: {err}")
+    elif ext in {".png", ".jpg", ".jpeg", ".webp"}:
+        try:
+            from PIL import Image
+            img = Image.open(io.BytesIO(data))
+            width, height = img.size
+            fmt = img.format or ext.lstrip(".").upper()
+            mode = img.mode
+            header = f"[Dokumen Gambar: {name} (Ukuran: {width}x{height}, Format: {fmt}, Mode: {mode})]"
+            
+            ocr_text = ""
+            try:
+                import pytesseract
+                ocr_text = pytesseract.image_to_string(img).strip()
+            except Exception as ocr_err:
+                logging.info(f"OCR note for {name}: {ocr_err}")
+                
+            if ocr_text:
+                return f"{header}\n\nTeks Hasil Ekstraksi OCR dari Gambar:\n{ocr_text}"
+            else:
+                return f"{header}\n\nDeskripsi: File gambar/diagram '{name}' berdimensi {width}x{height} piksel. Gunakan nama file dan konteks ini saat menjawab pertanyaan terkait gambar."
+        except Exception as img_err:
+            logging.warning(f"Gagal membaca gambar {name}: {img_err}")
     elif ext == ".ipynb":
         try:
             import json
@@ -134,6 +192,8 @@ def extract_text(name: str, data: bytes) -> str:
 
 
 def clean_text(text: str) -> str:
+    if not text:
+        return ""
     text = re.sub(r"\f", "\n", text)
     text = re.sub(r"\n{3,}", "\n\n", text)
     text = re.sub(r" {3,}", "  ", text)
@@ -142,6 +202,8 @@ def clean_text(text: str) -> str:
 
 def chunk_by_paragraphs(text: str, max_chars: int = 1200) -> list:
     """Split without dropping text from paragraphs longer than max_chars."""
+    if not text:
+        return []
     pieces = []
     for paragraph in (part.strip() for part in text.split("\n\n")):
         while len(paragraph) > max_chars:
@@ -168,7 +230,7 @@ def chunk_by_paragraphs(text: str, max_chars: int = 1200) -> list:
 def safe_filename(name: str) -> str:
     filename = Path(name or "").name.strip()
     if not filename or Path(filename).suffix.lower() not in ALLOWED_EXT:
-        raise HTTPException(400, "Nama atau tipe file tidak didukung")
+        raise HTTPException(400, f"Nama atau tipe file '{filename}' tidak didukung")
     return filename
 
 
@@ -181,9 +243,12 @@ def document_summary(name: str, chunks: int) -> dict:
             if candidate.exists():
                 path = candidate
             else:
-                matches = list(watched.rglob(name))
-                if matches:
-                    path = matches[0]
+                try:
+                    matches = list(watched.rglob(name))
+                    if matches:
+                        path = matches[0]
+                except Exception:
+                    pass
     try:
         stat = path.stat()
         size = stat.st_size
@@ -191,8 +256,9 @@ def document_summary(name: str, chunks: int) -> dict:
     except OSError:
         size, uploaded_at = 0, ""
     ext = Path(name).suffix.lower().lstrip(".")
+    recognized = {"pdf", "txt", "md", "ipynb", "docx", "xlsx", "png", "jpg", "jpeg"}
     return {
-        "id": name, "name": name, "type": ext if ext in {"pdf", "txt", "md", "ipynb"} else "txt",
+        "id": name, "name": name, "type": ext if ext in recognized else "txt",
         "size": size, "chunkCount": chunks, "status": "SIAP", "uploadedAt": uploaded_at,
         "fullText": "", "chunks": [],
     }
@@ -287,10 +353,59 @@ def set_watched_folder(req: FolderRequest):
     return {"folder": req.folder}
 
 
+def find_all_supported_files(root_dir: Path) -> list[Path]:
+    """
+    Recursively scans the directory tree safely, avoiding permission errors,
+    symlink loops, and standard ignored directories (e.g. $RECYCLE.BIN, AppData).
+    """
+    supported_files = []
+    ignored_dirs = {
+        "$recycle.bin", "system volume information", "appdata",
+        "node_modules", ".git", ".venv", "__pycache__", ".cache", "temp", "tmp"
+    }
+    
+    for dirpath, dirnames, filenames in os.walk(str(root_dir), topdown=True, onerror=lambda err: None):
+        # Filter out ignored/hidden directories in-place to prevent descending into them
+        dirnames[:] = [
+            d for d in dirnames
+            if not d.startswith(".") and d.lower() not in ignored_dirs
+        ]
+        
+        for fname in filenames:
+            ext = Path(fname).suffix.lower()
+            if ext in ALLOWED_EXT and not fname.startswith("~$") and not fname.startswith("."):
+                supported_files.append(Path(dirpath) / fname)
+                
+    return supported_files
+
+
+@app.get("/api/knowledge/files/{name:path}/raw")
+def get_raw_file(name: str):
+    """Serve original file for image previews and inspection."""
+    path = UPLOAD_DIR / name
+    if not path.exists():
+        watched = Path(_config.get("watched_folder", ""))
+        if watched.exists():
+            candidate = watched / name
+            if candidate.exists() and candidate.is_file():
+                path = candidate
+            else:
+                try:
+                    matches = list(watched.rglob(name))
+                    if matches and matches[0].is_file():
+                        path = matches[0]
+                except Exception:
+                    pass
+    if not path.exists() or not path.is_file():
+        raise HTTPException(404, "File tidak ditemukan")
+    return FileResponse(path)
+
+
 @app.post("/api/knowledge/scan-folder")
 def scan_folder(req: FolderRequest):
     """
-    Scan the given folder (recursively) for PDF/TXT/MD files,
+    Scan the given folder deeply and recursively for all supported files
+    (.pdf, .docx, .xlsx, .png, .jpg, .md, .txt, .ipynb),
     ingest any that are not already in the vector store, and
     return a summary of what was added.
     """
@@ -304,8 +419,8 @@ def scan_folder(req: FolderRequest):
     _config["watched_folder"] = str(folder)
     save_config(_config)
 
-    # Find all supported files recursively
-    all_files = [f for f in folder.rglob("*") if f.suffix.lower() in ALLOWED_EXT]
+    # Find all supported files deeply and recursively
+    all_files = find_all_supported_files(folder)
     if not all_files:
         return {"scanned": 0, "added": 0, "skipped": 0, "errors": [], "files": []}
 

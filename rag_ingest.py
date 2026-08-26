@@ -18,6 +18,8 @@ from pathlib import Path
 # ============================================================
 # TEXT EXTRACTION
 # ============================================================
+ALLOWED_EXT = {'.pdf', '.txt', '.md', '.ipynb', '.docx', '.xlsx', '.png', '.jpg', '.jpeg'}
+
 def extract_text(filepath: Path) -> str:
     ext = filepath.suffix.lower()
     if ext == '.pdf':
@@ -28,8 +30,71 @@ def extract_text(filepath: Path) -> str:
         except Exception as e:
             print(f"Error extracting {filepath}: {e}")
             return ""
+    elif ext == '.docx':
+        try:
+            import docx
+            doc = docx.Document(str(filepath))
+            parts = [p.text.strip() for p in doc.paragraphs if p.text.strip()]
+            for table in doc.tables:
+                for row in table.rows:
+                    cells = [c.text.strip().replace("\n", " ") for c in row.cells]
+                    if any(cells):
+                        parts.append("| " + " | ".join(cells) + " |")
+            return "\n\n".join(parts)
+        except Exception as e:
+            print(f"Error extracting docx {filepath}: {e}")
+            return ""
+    elif ext in ('.xlsx', '.xls'):
+        try:
+            import openpyxl
+            wb = openpyxl.load_workbook(str(filepath), data_only=True)
+            sheets = []
+            for name in wb.sheetnames:
+                ws = wb[name]
+                rows = []
+                for row in ws.iter_rows(values_only=True):
+                    cells = [str(c).strip() if c is not None else "" for c in row]
+                    if any(cells):
+                        rows.append("| " + " | ".join(cells) + " |")
+                if rows:
+                    sheets.append(f"### Sheet: {name}\n" + "\n".join(rows))
+            return "\n\n".join(sheets)
+        except Exception as e:
+            print(f"Error extracting xlsx {filepath}: {e}")
+            return ""
+    elif ext in ('.png', '.jpg', '.jpeg', '.webp'):
+        try:
+            from PIL import Image
+            img = Image.open(str(filepath))
+            w, h = img.size
+            header = f"[Image: {filepath.name} ({w}x{h}, {img.format})]"
+            ocr_text = ""
+            try:
+                import pytesseract
+                ocr_text = pytesseract.image_to_string(img).strip()
+            except Exception:
+                pass
+            if ocr_text:
+                return f"{header}\n\nOCR Extracted Text:\n{ocr_text}"
+            return f"{header}\n\nImage visual context: {filepath.name}"
+        except Exception as e:
+            print(f"Error reading image {filepath}: {e}")
+            return ""
     elif ext in ('.txt', '.md'):
         return filepath.read_text(encoding='utf-8', errors='replace')
+    elif ext == '.ipynb':
+        try:
+            nb = json.loads(filepath.read_text(encoding='utf-8', errors='ignore'))
+            cells = []
+            for cell in nb.get('cells', []):
+                src = cell.get('source', [])
+                if isinstance(src, list):
+                    src = "".join(src)
+                if src.strip():
+                    cells.append(src.strip())
+            return "\n\n".join(cells)
+        except Exception:
+            pass
     return ""
 
 
@@ -76,7 +141,7 @@ def chunk_by_paragraphs(text: str, max_chars: int = 1200, overlap_chars: int = 2
 # ============================================================
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--input', type=str, required=True, help='Folder with PDFs')
+    parser.add_argument('--input', type=str, required=True, help='Folder with documents')
     parser.add_argument('--store', type=str, default='./vector_db', help='Where to save vector DB')
     parser.add_argument('--model', type=str, default='all-MiniLM-L6-v2',
                         help='Embedding model (default: tiny, fast, free)')
@@ -85,11 +150,22 @@ def main():
     
     # Step 1: Extract text
     print("=" * 60)
-    print("STEP 1: Extracting text from PDFs...")
+    print("STEP 1: Extracting text from documents...")
     print("=" * 60)
     
     input_path = Path(args.input)
-    files = sorted(input_path.rglob('*.pdf')) if input_path.is_dir() else [input_path]
+    files = []
+    if input_path.is_file():
+        files = [input_path]
+    elif input_path.is_dir():
+        ignored_dirs = {"$recycle.bin", "system volume information", "appdata", "node_modules", ".git", ".venv", "__pycache__"}
+        for dirpath, dirnames, filenames in os.walk(str(input_path), topdown=True, onerror=lambda err: None):
+            dirnames[:] = [d for d in dirnames if not d.startswith('.') and d.lower() not in ignored_dirs]
+            for fname in filenames:
+                ext = Path(fname).suffix.lower()
+                if ext in ALLOWED_EXT and not fname.startswith('~$') and not fname.startswith('.'):
+                    files.append(Path(dirpath) / fname)
+    files = sorted(files)
     
     documents = []  # [{text, file, chunk_id}]
     

@@ -1,4 +1,4 @@
-export type DocFileType = 'pdf' | 'txt' | 'md' | 'ipynb';
+export type DocFileType = 'pdf' | 'txt' | 'md' | 'ipynb' | 'docx' | 'xlsx' | 'png' | 'jpg' | 'jpeg';
 export type DocStatus = 'SIAP' | 'TERPROSES' | 'PROSES';
 
 export interface DocChunk {

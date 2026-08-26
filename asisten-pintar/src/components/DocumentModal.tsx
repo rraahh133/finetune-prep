@@ -14,7 +14,8 @@ export const DocumentModal: React.FC<DocumentModalProps> = ({
 }) => {
   if (!doc) return null;
 
-  const [activeTab, setActiveTab] = useState<'chunks' | 'fullText'>('chunks');
+  const isImage = ['png', 'jpg', 'jpeg'].includes(doc.type?.toLowerCase());
+  const [activeTab, setActiveTab] = useState<'chunks' | 'fullText' | 'preview'>(isImage ? 'preview' : 'chunks');
   const [searchTerm, setSearchTerm] = useState('');
 
   const filteredChunks = doc.chunks.filter((c) =>
@@ -28,7 +29,9 @@ export const DocumentModal: React.FC<DocumentModalProps> = ({
         <div className="p-5 border-b border-[#cdc3d0]/40 dark:border-gray-800 flex items-center justify-between bg-[#f8f9fa] dark:bg-[#191c1d]">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-[#d8b4fe] text-[#604283] flex items-center justify-center">
-              <span className="material-symbols-outlined text-[24px]">description</span>
+              <span className="material-symbols-outlined text-[24px]">
+                {isImage ? 'image' : 'description'}
+              </span>
             </div>
             <div>
               <h3 className="font-headline text-[18px] font-bold text-[#191c1d] dark:text-gray-100">
@@ -50,6 +53,18 @@ export const DocumentModal: React.FC<DocumentModalProps> = ({
         {/* Sub-Header Tabs */}
         <div className="flex items-center justify-between px-6 pt-3 border-b border-[#cdc3d0]/40 dark:border-gray-800 bg-[#f3f4f5] dark:bg-[#2e3132]">
           <div className="flex gap-4">
+            {isImage && (
+              <button
+                onClick={() => setActiveTab('preview')}
+                className={`pb-2 text-[14px] font-semibold border-b-2 transition-colors cursor-pointer ${
+                  activeTab === 'preview'
+                    ? 'border-[#6f5092] text-[#6f5092] dark:text-[#d8b4fe]'
+                    : 'border-transparent text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'
+                }`}
+              >
+                Pratinjau Gambar
+              </button>
+            )}
             <button
               onClick={() => setActiveTab('chunks')}
               className={`pb-2 text-[14px] font-semibold border-b-2 transition-colors cursor-pointer ${
@@ -68,7 +83,7 @@ export const DocumentModal: React.FC<DocumentModalProps> = ({
                   : 'border-transparent text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'
               }`}
             >
-              Teks Utuh Dokumen
+              Teks / Hasil OCR
             </button>
           </div>
 
@@ -86,7 +101,21 @@ export const DocumentModal: React.FC<DocumentModalProps> = ({
 
         {/* Modal Body */}
         <div className="flex-1 overflow-y-auto p-6 space-y-4">
-          {activeTab === 'chunks' ? (
+          {activeTab === 'preview' ? (
+            <div className="flex flex-col items-center justify-center p-4 bg-[#f8f9fa] dark:bg-[#191c1d] rounded-xl border border-[#cdc3d0]/40 dark:border-gray-800">
+              <img
+                src={`/api/knowledge/files/${encodeURIComponent(doc.name)}/raw`}
+                alt={doc.name}
+                className="max-h-[380px] max-w-full rounded-lg object-contain shadow-sm"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                }}
+              />
+              <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-3 italic">
+                Gambar ini telah diproses dengan OCR dan diindeks ke dalam basis pengetahuan RAG.
+              </p>
+            </div>
+          ) : activeTab === 'chunks' ? (
             <>
               {/* Search Chunks Filter */}
               <div className="relative mb-3">

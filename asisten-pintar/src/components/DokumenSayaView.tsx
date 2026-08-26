@@ -63,7 +63,7 @@ export const DokumenSayaView: React.FC<DokumenSayaViewProps> = ({
           setFolderPathInput(data.folder);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   const handleBrowseFolder = async () => {
@@ -156,10 +156,15 @@ export const DokumenSayaView: React.FC<DokumenSayaViewProps> = ({
   }, [documents]);
 
   const colorMap: Record<string, { bg: string, icon: string, tag: string, lightBg: string, nameIcon: string }> = {
-    pdf: { bg: 'bg-blue-50 dark:bg-blue-900/20', icon: 'text-blue-500', tag: 'bg-red-500', lightBg: 'bg-red-100', nameIcon: 'picture_as_pdf' },
+    pdf: { bg: 'bg-red-50 dark:bg-red-900/20', icon: 'text-red-500', tag: 'bg-red-500', lightBg: 'bg-red-100', nameIcon: 'picture_as_pdf' },
     md: { bg: 'bg-blue-50 dark:bg-blue-900/20', icon: 'text-blue-500', tag: 'bg-blue-500', lightBg: 'bg-blue-100', nameIcon: 'article' },
-    txt: { bg: 'bg-blue-50 dark:bg-blue-900/20', icon: 'text-blue-500', tag: 'bg-gray-600', lightBg: 'bg-gray-200', nameIcon: 'description' },
-    ipynb: { bg: 'bg-blue-50 dark:bg-blue-900/20', icon: 'text-blue-500', tag: 'bg-orange-500', lightBg: 'bg-orange-100', nameIcon: 'code' },
+    txt: { bg: 'bg-gray-50 dark:bg-gray-800/40', icon: 'text-gray-500', tag: 'bg-gray-600', lightBg: 'bg-gray-200', nameIcon: 'description' },
+    ipynb: { bg: 'bg-orange-50 dark:bg-orange-900/20', icon: 'text-orange-500', tag: 'bg-orange-500', lightBg: 'bg-orange-100', nameIcon: 'code' },
+    docx: { bg: 'bg-sky-50 dark:bg-sky-900/20', icon: 'text-sky-600', tag: 'bg-sky-600', lightBg: 'bg-sky-100', nameIcon: 'description' },
+    xlsx: { bg: 'bg-emerald-50 dark:bg-emerald-900/20', icon: 'text-emerald-600', tag: 'bg-emerald-600', lightBg: 'bg-emerald-100', nameIcon: 'table_chart' },
+    png: { bg: 'bg-purple-50 dark:bg-purple-900/20', icon: 'text-purple-600', tag: 'bg-purple-600', lightBg: 'bg-purple-100', nameIcon: 'image' },
+    jpg: { bg: 'bg-purple-50 dark:bg-purple-900/20', icon: 'text-purple-600', tag: 'bg-purple-600', lightBg: 'bg-purple-100', nameIcon: 'image' },
+    jpeg: { bg: 'bg-purple-50 dark:bg-purple-900/20', icon: 'text-purple-600', tag: 'bg-purple-600', lightBg: 'bg-purple-100', nameIcon: 'image' },
   };
 
   return (
@@ -176,8 +181,8 @@ export const DokumenSayaView: React.FC<DokumenSayaViewProps> = ({
       <div className="mb-10">
         <div className="bg-white dark:bg-[#1e1e24] border border-[#cdc3d0] dark:border-gray-800 rounded-xl p-5 md:p-6 shadow-sm relative overflow-hidden">
           <div>
-            <div className="flex items-start gap-4 mb-4 relative z-10">
-              <div className="w-12 h-12 rounded-xl bg-[#6f5092] text-white flex items-center justify-center shrink-0">
+            <div className="flex items-start gap-4 mb-3 relative z-10">
+              <div className="w-12 h-12 rounded-xl bg-[#6f5092] text-white flex items-center justify-center shrink-0 shadow-sm">
                 <span
                   className="material-symbols-outlined text-[26px]"
                   style={{ fontVariationSettings: "'FILL' 1" }}
@@ -189,6 +194,60 @@ export const DokumenSayaView: React.FC<DokumenSayaViewProps> = ({
                 <h3 className="font-headline text-[20px] font-bold text-[#191c1d] dark:text-gray-100">
                   Impor Dokumen dari Folder
                 </h3>
+                <p className="font-body text-[13px] text-[#4a454f] dark:text-gray-400 mt-0.5">
+                  Pindai direktori lokal (termasuk seluruh subfolder bertingkat) untuk diindeks ke dalam ChromaDB RAG.
+                </p>
+              </div>
+            </div>
+
+            {/* Supported Formats Grid */}
+            <div className="mb-4 pt-3 border-t border-gray-100 dark:border-gray-800/80">
+              <span className="text-[11px] font-semibold tracking-wider text-gray-500 dark:text-gray-400 uppercase block mb-2">
+                Format File yang Didukung:
+              </span>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+                <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200/70 dark:border-red-800/40">
+                  <span className="material-symbols-outlined text-red-600 dark:text-red-400 text-[18px]">picture_as_pdf</span>
+                  <div>
+                    <div className="text-[12px] font-bold text-red-900 dark:text-red-200">.PDF</div>
+                    <div className="text-[10px] text-red-700/80 dark:text-red-300/80">Dokumen PDF</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-sky-50 dark:bg-sky-950/30 border border-sky-200/70 dark:border-sky-800/40">
+                  <span className="material-symbols-outlined text-sky-600 dark:text-sky-400 text-[18px]">description</span>
+                  <div>
+                    <div className="text-[12px] font-bold text-sky-900 dark:text-sky-200">.DOCX</div>
+                    <div className="text-[10px] text-sky-700/80 dark:text-sky-300/80">MS Word</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200/70 dark:border-emerald-800/40">
+                  <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-400 text-[18px]">table_chart</span>
+                  <div>
+                    <div className="text-[12px] font-bold text-emerald-900 dark:text-emerald-200">.XLSX</div>
+                    <div className="text-[10px] text-emerald-700/80 dark:text-emerald-300/80">MS Excel</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-purple-50 dark:bg-purple-950/30 border border-purple-200/70 dark:border-purple-800/40">
+                  <span className="material-symbols-outlined text-purple-600 dark:text-purple-400 text-[18px]">image</span>
+                  <div>
+                    <div className="text-[12px] font-bold text-purple-900 dark:text-purple-200">.PNG / .JPG</div>
+                    <div className="text-[10px] text-purple-700/80 dark:text-purple-300/80">Gambar & OCR</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200/70 dark:border-blue-800/40">
+                  <span className="material-symbols-outlined text-blue-600 dark:text-blue-400 text-[18px]">article</span>
+                  <div>
+                    <div className="text-[12px] font-bold text-blue-900 dark:text-blue-200">.MD</div>
+                    <div className="text-[10px] text-blue-700/80 dark:text-blue-300/80">Markdown</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200/70 dark:border-amber-800/40">
+                  <span className="material-symbols-outlined text-amber-600 dark:text-amber-400 text-[18px]">code</span>
+                  <div>
+                    <div className="text-[12px] font-bold text-amber-900 dark:text-amber-200">.IPYNB / .TXT</div>
+                    <div className="text-[10px] text-amber-700/80 dark:text-amber-300/80">Notebook / Text</div>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -200,7 +259,7 @@ export const DokumenSayaView: React.FC<DokumenSayaViewProps> = ({
                 >
                   folder
                 </span>
-                Lokasi Folder
+                Lokasi Folder (Mendukung Subfolder Bertingkat)
               </label>
 
               <div className="flex gap-2 sm:gap-3 w-full">
@@ -209,7 +268,7 @@ export const DokumenSayaView: React.FC<DokumenSayaViewProps> = ({
                   value={folderPathInput}
                   onChange={(e) => setFolderPathInput(e.target.value)}
                   className="flex-1 bg-[#f3f4f5] dark:bg-[#2e3132] border border-[#cdc3d0] dark:border-gray-700 rounded-lg px-3.5 py-2 font-body text-[14px] text-[#191c1d] dark:text-gray-100 focus:outline-none focus:border-[#6f5092]"
-                  placeholder="Pilih atau ketik lokasi folder..."
+                  placeholder="Contoh: C:\Users\Username\Documents atau folder proyek..."
                 />
                 <button
                   type="button"
@@ -297,89 +356,89 @@ export const DokumenSayaView: React.FC<DokumenSayaViewProps> = ({
             </div>
           </div>
 
-            {/* All Files Section */}
-            <div ref={allFilesRef}>
-              <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-                <h3 className="font-headline text-[20px] font-bold text-gray-900 dark:text-gray-100">
-                  Semua Dokumen
-                </h3>
-                <div className="flex items-center gap-3">
-                  {selectedIds.size > 0 && (
-                    <button
-                      onClick={handleDeleteSelectedClick}
-                      className="flex items-center gap-2 border border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-950/40 px-3 py-1.5 rounded-lg text-[13px] font-body text-red-600 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors cursor-pointer"
-                    >
-                      <span className="material-symbols-outlined text-[16px]">delete</span>
-                      Hapus Terpilih ({selectedIds.size})
-                    </button>
-                  )}
-                  <button className="flex items-center gap-2 border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1e1e24] px-3 py-1.5 rounded-lg text-[13px] font-body text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                    <span className="material-symbols-outlined text-[16px]">description</span>
-                    Type
-                    <span className="material-symbols-outlined text-[16px]">expand_more</span>
+          {/* All Files Section */}
+          <div ref={allFilesRef}>
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+              <h3 className="font-headline text-[20px] font-bold text-gray-900 dark:text-gray-100">
+                Semua Dokumen
+              </h3>
+              <div className="flex items-center gap-3">
+                {selectedIds.size > 0 && (
+                  <button
+                    onClick={handleDeleteSelectedClick}
+                    className="flex items-center gap-2 border border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-950/40 px-3 py-1.5 rounded-lg text-[13px] font-body text-red-600 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">delete</span>
+                    Hapus Terpilih ({selectedIds.size})
                   </button>
+                )}
+                <button className="flex items-center gap-2 border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1e1e24] px-3 py-1.5 rounded-lg text-[13px] font-body text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                  <span className="material-symbols-outlined text-[16px]">description</span>
+                  Type
+                  <span className="material-symbols-outlined text-[16px]">expand_more</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-[#1e1e24] border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm overflow-hidden">
+              <div className="flex items-center gap-4 px-4 py-3 bg-gray-50/50 dark:bg-[#1a1a20] border-b border-gray-100 dark:border-gray-800">
+                <div className="w-6 flex justify-center">
+                  <input
+                    type="checkbox"
+                    checked={documents.length > 0 && selectedIds.size === documents.length}
+                    onChange={handleSelectAll}
+                    className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 accent-[#6f5092] cursor-pointer"
+                    title="Pilih semua dokumen"
+                  />
                 </div>
+                <div className="flex-1 font-body text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-1 cursor-pointer">
+                  NAMA <span className="material-symbols-outlined text-[14px]">arrow_downward</span>
+                </div>
+                <div className="w-[100px] hidden sm:block font-body text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  UKURAN
+                </div>
+                <div className="w-[120px] hidden lg:block font-body text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  TANGGAL
+                </div>
+                <div className="w-8"></div>
               </div>
 
-              <div className="bg-white dark:bg-[#1e1e24] border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm overflow-hidden">
-                <div className="flex items-center gap-4 px-4 py-3 bg-gray-50/50 dark:bg-[#1a1a20] border-b border-gray-100 dark:border-gray-800">
-                  <div className="w-6 flex justify-center">
-                    <input
-                      type="checkbox"
-                      checked={documents.length > 0 && selectedIds.size === documents.length}
-                      onChange={handleSelectAll}
-                      className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 accent-[#6f5092] cursor-pointer"
-                      title="Pilih semua dokumen"
-                    />
-                  </div>
-                  <div className="flex-1 font-body text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-1 cursor-pointer">
-                    NAMA <span className="material-symbols-outlined text-[14px]">arrow_downward</span>
-                  </div>
-                  <div className="w-[100px] hidden sm:block font-body text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    UKURAN
-                  </div>
-                  <div className="w-[120px] hidden lg:block font-body text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    TANGGAL
-                  </div>
-                  <div className="w-8"></div>
-                </div>
+              <div className="divide-y divide-gray-50 dark:divide-gray-800/50">
+                {documents.map((doc) => {
+                  const style = colorMap[doc.type] || colorMap.txt;
+                  return (
+                    <div key={doc.id} className="flex items-center gap-4 px-4 py-3 hover:bg-blue-50/30 dark:hover:bg-gray-800/40 transition-colors group">
+                      <div className="w-6 flex justify-center">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(doc.id)}
+                          onChange={() => handleToggleSelect(doc.id)}
+                          className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 accent-[#6f5092] cursor-pointer"
+                        />
+                      </div>
 
-                <div className="divide-y divide-gray-50 dark:divide-gray-800/50">
-                  {documents.map((doc) => {
-                    const style = colorMap[doc.type] || colorMap.txt;
-                    return (
-                      <div key={doc.id} className="flex items-center gap-4 px-4 py-3 hover:bg-blue-50/30 dark:hover:bg-gray-800/40 transition-colors group">
-                        <div className="w-6 flex justify-center">
-                          <input
-                            type="checkbox"
-                            checked={selectedIds.has(doc.id)}
-                            onChange={() => handleToggleSelect(doc.id)}
-                            className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 accent-[#6f5092] cursor-pointer"
-                          />
-                        </div>
-
-                        <div className="flex-1 min-w-0 flex items-center gap-3">
-                          <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${style.lightBg} dark:bg-gray-800`}>
-                            <span className={`material-symbols-outlined text-[20px] ${style.icon}`} style={{ fontVariationSettings: "'FILL' 1" }}>
-                              {style.nameIcon}
-                            </span>
-                          </div>
-                          <span
-                            className="font-body text-[14px] font-semibold text-gray-900 dark:text-gray-100 truncate cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                            onClick={() => handleOpenOriginalDoc(doc)}
-                            title={doc.name}
-                          >
-                            {doc.name}
+                      <div className="flex-1 min-w-0 flex items-center gap-3">
+                        <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${style.lightBg} dark:bg-gray-800`}>
+                          <span className={`material-symbols-outlined text-[20px] ${style.icon}`} style={{ fontVariationSettings: "'FILL' 1" }}>
+                            {style.nameIcon}
                           </span>
                         </div>
+                        <span
+                          className="font-body text-[14px] font-semibold text-gray-900 dark:text-gray-100 truncate cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                          onClick={() => handleOpenOriginalDoc(doc)}
+                          title={doc.name}
+                        >
+                          {doc.name}
+                        </span>
+                      </div>
 
-                        <div className="w-[100px] hidden sm:block font-body text-[13px] font-medium text-gray-500 dark:text-gray-400">
-                          {formatSize(doc.size || 0)}
-                        </div>
+                      <div className="w-[100px] hidden sm:block font-body text-[13px] font-medium text-gray-500 dark:text-gray-400">
+                        {formatSize(doc.size || 0)}
+                      </div>
 
-                        <div className="w-[120px] hidden lg:block font-body text-[13px] font-medium text-gray-500 dark:text-gray-400">
-                          {formatDate(doc.uploadedAt || '')}
-                        </div>
+                      <div className="w-[120px] hidden lg:block font-body text-[13px] font-medium text-gray-500 dark:text-gray-400">
+                        {formatDate(doc.uploadedAt || '')}
+                      </div>
 
                       <div className="w-8 flex justify-end relative">
                         <button

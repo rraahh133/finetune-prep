@@ -5,3 +5,7 @@ pypdf
 chromadb
 sentence-transformers
 openai
+python-docx
+openpyxl
+pillow
+pytesseract
