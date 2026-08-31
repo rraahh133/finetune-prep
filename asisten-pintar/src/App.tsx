@@ -19,12 +19,53 @@ import { TanyaJawabView } from './components/TanyaJawabView';
 import { PengaturanView } from './components/PengaturanView';
 import { TemplateTersimpanView } from './components/TemplateTersimpanView';
 import { DokumentasiView } from './components/DokumentasiView';
+import { AdminDokumentasiView } from './components/AdminDokumentasiView';
 import { DocumentModal } from './components/DocumentModal';
 import { SourceModal } from './components/SourceModal';
+import { AdminLoginView } from './components/AdminLoginView';
 import logoIcon from '../assets/cleaning.png';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'dokumen' | 'tanya' | 'pengaturan' | 'template' | 'dokumentasi'>('dokumentasi');
+  const getIsAdminPath = () => typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
+  const [isAdminPath, setIsAdminPath] = useState<boolean>(getIsAdminPath());
+  const [isAuthed, setIsAuthed] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('asisten_pintar_admin_auth') === 'true';
+  });
+
+  const navigate = (path: string) => {
+    window.history.pushState({}, '', path);
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  };
+
+  useEffect(() => {
+    const onPop = () => {
+      setIsAdminPath(getIsAdminPath());
+      setIsAuthed(localStorage.getItem('asisten_pintar_admin_auth') === 'true');
+    };
+    const onStorage = () => setIsAuthed(localStorage.getItem('asisten_pintar_admin_auth') === 'true');
+    window.addEventListener('popstate', onPop);
+    window.addEventListener('storage', onStorage);
+    // middleware: cek tiap mount
+    setIsAuthed(localStorage.getItem('asisten_pintar_admin_auth') === 'true');
+    return () => {
+      window.removeEventListener('popstate', onPop);
+      window.removeEventListener('storage', onStorage);
+    };
+  }, []);
+
+  const handleAdminLoginSuccess = () => {
+    setIsAuthed(true);
+    navigate('/admin');
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('asisten_pintar_admin_auth');
+    localStorage.removeItem('asisten_pintar_admin_user');
+    setIsAuthed(false);
+    navigate('/admin');
+  };
+
   const [documents, setDocuments] = useState<DocumentItem[]>(() => {
     const saved = localStorage.getItem('asisten_pintar_docs');
     if (!saved) return INITIAL_DOCUMENTS;
@@ -76,6 +117,11 @@ export default function App() {
   const [inspectCitation, setInspectCitation] = useState<Citation | null>(null);
   const [isOpenMobile, setIsOpenMobile] = useState(false);
 
+  // User tabs: hanya beranda & tanya ai
+  const [userTab, setUserTab] = useState<'dokumentasi' | 'tanya'>('dokumentasi');
+  // Admin tabs: dokumentasi, bahan & sumber, template, pengaturan
+  const [adminTab, setAdminTab] = useState<'dokumentasi' | 'dokumen' | 'template' | 'pengaturan'>('dokumentasi');
+
   // Sync localStorage
   useEffect(() => {
     localStorage.setItem('asisten_pintar_docs', JSON.stringify(documents));
@@ -126,13 +172,13 @@ export default function App() {
     };
     setChatSessions([newSession, ...chatSessions]);
     setCurrentChatId(newId);
-    setActiveTab('tanya');
+    setUserTab('tanya');
   };
 
   // Handle Select Chat
   const handleSelectChat = (id: string) => {
     setCurrentChatId(id);
-    setActiveTab('tanya');
+    setUserTab('tanya');
   };
 
   // Handle Delete Chat
@@ -371,7 +417,7 @@ export default function App() {
   };
 
   const handleUseTemplate = (promptText: string) => {
-    setActiveTab('tanya');
+    setUserTab('tanya');
     handleSendMessage(promptText);
   };
 
@@ -385,6 +431,110 @@ export default function App() {
 
   const currentChatSession = chatSessions.find((c) => c.id === currentChatId) || null;
 
+  // ==================== ADMIN SHELL ====================
+  if (isAdminPath) {
+    // Belum login -> tampilkan halaman login admin
+    if (!isAuthed) {
+      return <AdminLoginView onLoginSuccess={handleAdminLoginSuccess} />;
+    }
+
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#f5f2fa] via-[#ece6f6] to-[#e3d9f2] dark:from-[#171422] dark:via-[#211c33] dark:to-[#2c2444] text-[#191c1d] dark:text-gray-100 flex font-body antialiased transition-colors duration-300">
+        {/* Mobile Top Header */}
+        <div className="md:hidden fixed top-0 left-0 right-0 h-14 bg-[#f3f4f5] dark:bg-[#1e1e24] border-b border-[#cdc3d0] dark:border-gray-800 flex items-center justify-between px-4 z-20">
+          <button
+            onClick={() => setIsOpenMobile(true)}
+            className="p-1.5 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-800 rounded-lg"
+          >
+            <span className="material-symbols-outlined">menu</span>
+          </button>
+          <div className="flex items-center gap-2">
+            <img src={logoIcon} alt="Asisten Pintar" className="w-7 h-7 object-contain" />
+            <span className="font-headline font-bold text-[16px]">Asisten Pintar</span>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="p-1.5 text-[#6f5092] hover:bg-[#e9d5ff] dark:hover:bg-[#4f4062]/60 rounded-lg"
+            title="Keluar Admin"
+          >
+            <span className="material-symbols-outlined">logout</span>
+          </button>
+        </div>
+
+        <Sidebar
+          activeTab={adminTab as any}
+          setActiveTab={(tab: any) => {
+            if (['dokumentasi', 'dokumen', 'template', 'pengaturan'].includes(tab)) setAdminTab(tab as any);
+          }}
+          chatSessions={chatSessions}
+          currentChatId={currentChatId}
+          onSelectChat={handleSelectChat}
+          onNewChat={handleNewChat}
+          onDeleteChat={handleDeleteChat}
+          onRenameChat={handleRenameChat}
+          onPinChat={handlePinChat}
+          darkMode={darkMode}
+          setDarkMode={setDarkMode}
+          isOpenMobile={isOpenMobile}
+          setIsOpenMobile={setIsOpenMobile}
+          variant="admin"
+          onLogout={handleLogout}
+        />
+
+        <div className="flex-1 flex flex-col md:ml-[280px] min-h-screen pt-14 md:pt-0 relative">
+          {adminTab === 'dokumentasi' && (
+            <AdminDokumentasiView darkMode={darkMode} />
+          )}
+          {adminTab === 'dokumen' && (
+            <DokumenSayaView
+              documents={documents}
+              onAddDocument={handleAddDocument}
+              onDeleteDocument={handleDeleteDocument}
+              onDeleteSelected={handleDeleteSelected}
+              onScanFolder={handleScanFolder}
+              onSelectDocForInspection={(doc) => setInspectDoc(doc)}
+              onQuickChat={(msg) => {
+                handleSendMessage(msg);
+              }}
+              darkMode={darkMode}
+            />
+          )}
+          {adminTab === 'template' && (
+            <TemplateTersimpanView
+              templates={templates}
+              onUseTemplate={handleUseTemplate}
+              onDeleteTemplate={handleDeleteTemplate}
+              darkMode={darkMode}
+            />
+          )}
+          {adminTab === 'pengaturan' && (
+            <PengaturanView
+              settings={settings}
+              onSaveSettings={(newSettings) => setSettings(newSettings)}
+              darkMode={darkMode}
+            />
+          )}
+        </div>
+
+        <DocumentModal
+          doc={inspectDoc}
+          onClose={() => setInspectDoc(null)}
+          onAskAboutDoc={(docId, docName) => {
+            handleSendMessage(
+              `Jelaskan detail dan isi penting dari dokumen ${docName}.`,
+              docId
+            );
+          }}
+        />
+        <SourceModal
+          citation={inspectCitation}
+          onClose={() => setInspectCitation(null)}
+        />
+      </div>
+    );
+  }
+
+  // ==================== USER SHELL (default) ====================
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#f5f2fa] via-[#ece6f6] to-[#e3d9f2] dark:from-[#171422] dark:via-[#211c33] dark:to-[#2c2444] text-[#191c1d] dark:text-gray-100 flex font-body antialiased transition-colors duration-300">
       {/* Mobile Top Header */}
@@ -399,18 +549,14 @@ export default function App() {
           <img src={logoIcon} alt="Asisten Pintar" className="w-7 h-7 object-contain" />
           <span className="font-headline font-bold text-[16px]">Asisten Pintar</span>
         </div>
-        <button
-          onClick={handleNewChat}
-          className="p-1.5 text-[#6f5092] hover:bg-[#e9d5ff] dark:hover:bg-[#4f4062]/60 rounded-lg"
-        >
-          <span className="material-symbols-outlined">add</span>
-        </button>
       </div>
 
-      {/* Sidebar Navigation */}
       <Sidebar
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        activeTab={userTab as any}
+        setActiveTab={(tab: any) => {
+          if (['dokumentasi', 'tanya'].includes(tab)) setUserTab(tab as any);
+          if (['dokumen', 'template', 'pengaturan'].includes(tab)) navigate('/admin');
+        }}
         chatSessions={chatSessions}
         currentChatId={currentChatId}
         onSelectChat={handleSelectChat}
@@ -422,27 +568,14 @@ export default function App() {
         setDarkMode={setDarkMode}
         isOpenMobile={isOpenMobile}
         setIsOpenMobile={setIsOpenMobile}
+        variant="user"
       />
 
-      {/* Main Content View Container */}
       <div className="flex-1 flex flex-col md:ml-[280px] min-h-screen pt-14 md:pt-0 relative">
-        {activeTab === 'dokumen' && (
-          <DokumenSayaView
-            documents={documents}
-            onAddDocument={handleAddDocument}
-            onDeleteDocument={handleDeleteDocument}
-            onDeleteSelected={handleDeleteSelected}
-            onScanFolder={handleScanFolder}
-            onSelectDocForInspection={(doc) => setInspectDoc(doc)}
-            onQuickChat={(msg) => {
-              setActiveTab('tanya');
-              handleSendMessage(msg);
-            }}
-            darkMode={darkMode}
-          />
+        {userTab === 'dokumentasi' && (
+          <DokumentasiView darkMode={darkMode} />
         )}
-
-        {activeTab === 'tanya' && (
+        {userTab === 'tanya' && (
           <TanyaJawabView
             currentChat={currentChatSession}
             documents={documents}
@@ -452,42 +585,19 @@ export default function App() {
             darkMode={darkMode}
           />
         )}
-
-        {activeTab === 'pengaturan' && (
-          <PengaturanView
-            settings={settings}
-            onSaveSettings={(newSettings) => setSettings(newSettings)}
-            darkMode={darkMode}
-          />
-        )}
-
-        {activeTab === 'template' && (
-          <TemplateTersimpanView
-            templates={templates}
-            onUseTemplate={handleUseTemplate}
-            onDeleteTemplate={handleDeleteTemplate}
-            darkMode={darkMode}
-          />
-        )}
-
-        {activeTab === 'dokumentasi' && (
-          <DokumentasiView darkMode={darkMode} />
-        )}
       </div>
 
-      {/* Inspection Modals */}
       <DocumentModal
         doc={inspectDoc}
         onClose={() => setInspectDoc(null)}
         onAskAboutDoc={(docId, docName) => {
-          setActiveTab('tanya');
+          setUserTab('tanya');
           handleSendMessage(
             `Jelaskan detail dan isi penting dari dokumen ${docName}.`,
             docId
           );
         }}
       />
-
       <SourceModal
         citation={inspectCitation}
         onClose={() => setInspectCitation(null)}
