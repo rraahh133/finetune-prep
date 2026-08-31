@@ -20,6 +20,24 @@ from pathlib import Path
 # ============================================================
 ALLOWED_EXT = {'.pdf', '.txt', '.md', '.ipynb', '.docx', '.xlsx', '.png', '.jpg', '.jpeg'}
 
+_OCR_AVAILABLE = None
+
+
+def ocr_available() -> bool:
+    """Detect Tesseract binary availability once and cache it."""
+    global _OCR_AVAILABLE
+    if _OCR_AVAILABLE is None:
+        import shutil
+        try:
+            from pytesseract import get_tesseract_version
+            _OCR_AVAILABLE = bool(shutil.which("tesseract") or get_tesseract_version())
+        except Exception:
+            _OCR_AVAILABLE = False
+        if not _OCR_AVAILABLE:
+            print("⚠️  OCR (Tesseract) tidak tersedia — gambar akan diindeks sebagai metadata, bukan hasil scan teks. Install Tesseract dan pastikan di PATH untuk aktifkan OCR.")
+    return _OCR_AVAILABLE
+
+
 def extract_text(filepath: Path) -> str:
     ext = filepath.suffix.lower()
     if ext == '.pdf':
@@ -46,8 +64,14 @@ def extract_text(filepath: Path) -> str:
             return ""
     elif ext in ('.xlsx', '.xls'):
         try:
+            import warnings
             import openpyxl
-            wb = openpyxl.load_workbook(str(filepath), data_only=True)
+            with warnings.catch_warnings():
+                # Silence openpyxl's harmless pivot-cache/extension warnings.
+                warnings.filterwarnings("ignore", message=".*invalid dependency definitions.*")
+                warnings.filterwarnings("ignore", message=".*Unknown extension.*")
+                warnings.filterwarnings("ignore", message=".*Conditional Formatting extension.*")
+                wb = openpyxl.load_workbook(str(filepath), data_only=True)
             sheets = []
             for name in wb.sheetnames:
                 ws = wb[name]
@@ -69,11 +93,14 @@ def extract_text(filepath: Path) -> str:
             w, h = img.size
             header = f"[Image: {filepath.name} ({w}x{h}, {img.format})]"
             ocr_text = ""
-            try:
-                import pytesseract
-                ocr_text = pytesseract.image_to_string(img).strip()
-            except Exception:
-                pass
+            if ocr_available():
+                try:
+                    import pytesseract
+                    ocr_img = img.convert("RGB") if img.mode in {"RGBA", "P", "LA"} else img
+                    lang = os.getenv("RAG_OCR_LANG", "ind+eng")
+                    ocr_text = pytesseract.image_to_string(ocr_img, lang=lang).strip()
+                except Exception:
+                    pass  # binary vanished between check and call; treat as no-OCR
             if ocr_text:
                 return f"{header}\n\nOCR Extracted Text:\n{ocr_text}"
             return f"{header}\n\nImage visual context: {filepath.name}"
